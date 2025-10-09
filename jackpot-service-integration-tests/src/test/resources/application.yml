@@ -1,0 +1,80 @@
+# Integration Test Configuration
+spring:
+  # Database Configuration (overridden by TestContainers)
+  datasource:
+    driver-class-name: org.postgresql.Driver
+
+  # Explicitly disable SQL init - use Hibernate DDL instead
+  sql:
+    init:
+      mode: never
+
+  # JPA Configuration
+  jpa:
+    hibernate:
+      ddl-auto: create
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        jdbc:
+          time_zone: UTC
+    defer-datasource-initialization: false
+
+  # Redis Configuration (overridden by TestContainers)
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+  # Kafka Configuration (overridden by TestContainers)
+  kafka:
+    bootstrap-servers: localhost:9092 # Will be overridden by TestContainers
+    consumer:
+      group-id: test-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: com.jackpot.dto,java.util,java.lang
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: all
+      retries: 3
+
+  # Test Configuration
+  test:
+    database:
+      replace: none
+
+# JWT Configuration
+jwt:
+  secret: jackpot-service-secret-test-test-test
+  expiration: 3600000  # 1 hour in milliseconds
+
+# Logging Configuration for Tests
+logging:
+  level:
+    com.jackpot: DEBUG
+    org.springframework.security: DEBUG
+    org.springframework.security.authentication: DEBUG
+    org.springframework.kafka: INFO
+    org.testcontainers: INFO
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+
+# Server Configuration
+server:
+  port: 0  # Random port for parallel test execution
+
+# Management Endpoints (for health checks)
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
