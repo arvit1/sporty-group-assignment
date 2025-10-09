@@ -22,15 +22,18 @@ public class KafkaProducer {
         this.kafkaTemplate = kafkaTemplate;
     }
 
-    public CompletableFuture<SendResult<String, BetRequest>> sendBet(BetRequest betRequest) {
-        logger.info("Sending bet to Kafka topic '{}': {}", TOPIC, betRequest);
+    public CompletableFuture<SendResult<String, BetRequest>> sendBet(BetRequest betRequest, String userId) {
+        logger.info("Sending bet to Kafka topic '{}' for user '{}': {}", TOPIC, userId, betRequest);
 
-        return kafkaTemplate.send(TOPIC, betRequest.betId(), betRequest)
+        // Use composite key: userId-betId to ensure user-specific partitioning
+        String key = userId + "-" + betRequest.betId();
+
+        return kafkaTemplate.send(TOPIC, key, betRequest)
                 .whenComplete((result, ex) -> {
                     if (ex == null) {
-                        logger.info("Successfully sent bet to Kafka: {}", betRequest.betId());
+                        logger.info("Successfully sent bet to Kafka: {} for user {}", betRequest.betId(), userId);
                     } else {
-                        logger.error("Failed to send bet to Kafka: {}", betRequest.betId(), ex);
+                        logger.error("Failed to send bet to Kafka: {} for user {}", betRequest.betId(), userId, ex);
                     }
                 });
     }

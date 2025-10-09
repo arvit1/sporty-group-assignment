@@ -1,6 +1,7 @@
 package com.jackpot.kafka;
 
 import com.jackpot.dto.BetRequest;
+import com.jackpot.model.Contribution;
 import com.jackpot.service.JackpotService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -41,18 +42,20 @@ class KafkaConsumerTest {
 
     @BeforeEach
     void setUp() {
-        validBetRequest = new BetRequest("bet123", "user456", "jackpot-fixed", BigDecimal.valueOf(100));
+        validBetRequest = new BetRequest("bet123", "jackpot-fixed", BigDecimal.valueOf(100));
     }
 
     @Test
     void testConsumeBet_Success() {
         // Arrange
-        doNothing().when(jackpotService).processContribution(
+        Contribution mockContribution = new Contribution("bet123", "user456", "jackpot-fixed",
+            BigDecimal.valueOf(100), BigDecimal.valueOf(10), BigDecimal.valueOf(1000));
+        when(jackpotService.processContribution(
             eq("bet123"), eq("user456"), eq("jackpot-fixed"), eq(BigDecimal.valueOf(100))
-        );
+        )).thenReturn(mockContribution);
 
         // Act
-        kafkaConsumer.consumeBet(validBetRequest);
+        kafkaConsumer.consumeBet(validBetRequest, "user456-bet123");
 
         // Assert
         verify(jackpotService).processContribution("bet123", "user456", "jackpot-fixed", BigDecimal.valueOf(100));
@@ -63,12 +66,12 @@ class KafkaConsumerTest {
     void testConsumeBet_ServiceThrowsException() {
         // Arrange
         RuntimeException serviceException = new RuntimeException("Service unavailable");
-        doThrow(serviceException).when(jackpotService).processContribution(
+        when(jackpotService.processContribution(
             eq("bet123"), eq("user456"), eq("jackpot-fixed"), eq(BigDecimal.valueOf(100))
-        );
+        )).thenThrow(serviceException);
 
         // Act & Assert - Consumer should catch the exception and log it, not propagate
-        kafkaConsumer.consumeBet(validBetRequest);
+        kafkaConsumer.consumeBet(validBetRequest, "user456-bet123");
 
         // Verify the service was called despite the exception
         verify(jackpotService).processContribution("bet123", "user456", "jackpot-fixed", BigDecimal.valueOf(100));
@@ -80,7 +83,7 @@ class KafkaConsumerTest {
         BetRequest nullBetRequest = null;
 
         // Act & Assert - Should handle null gracefully
-        kafkaConsumer.consumeBet(nullBetRequest);
+        kafkaConsumer.consumeBet(nullBetRequest, "user456-bet123");
 
         // Verify no service interaction for null message
         verifyNoInteractions(jackpotService);
@@ -89,16 +92,16 @@ class KafkaConsumerTest {
     @Test
     void testConsumeBet_InvalidBetAmount() {
         // Arrange
-        BetRequest invalidBetRequest = new BetRequest("bet123", "user456", "jackpot-fixed", BigDecimal.valueOf(-100));
+        BetRequest invalidBetRequest = new BetRequest("bet123", "jackpot-fixed", BigDecimal.valueOf(-100));
 
         // Simulate service validation failure
         IllegalArgumentException validationException = new IllegalArgumentException("Invalid bet amount");
-        doThrow(validationException).when(jackpotService).processContribution(
+        when(jackpotService.processContribution(
             eq("bet123"), eq("user456"), eq("jackpot-fixed"), eq(BigDecimal.valueOf(-100))
-        );
+        )).thenThrow(validationException);
 
         // Act & Assert - Should catch and log validation errors
-        kafkaConsumer.consumeBet(invalidBetRequest);
+        kafkaConsumer.consumeBet(invalidBetRequest, "user456-bet123");
 
         verify(jackpotService).processContribution("bet123", "user456", "jackpot-fixed", BigDecimal.valueOf(-100));
     }
@@ -107,12 +110,12 @@ class KafkaConsumerTest {
     void testConsumeBet_DatabaseConnectionError() {
         // Arrange
         RuntimeException dbException = new RuntimeException("Database connection failed");
-        doThrow(dbException).when(jackpotService).processContribution(
+        when(jackpotService.processContribution(
             eq("bet123"), eq("user456"), eq("jackpot-fixed"), eq(BigDecimal.valueOf(100))
-        );
+        )).thenThrow(dbException);
 
         // Act & Assert - Should handle database errors gracefully
-        kafkaConsumer.consumeBet(validBetRequest);
+        kafkaConsumer.consumeBet(validBetRequest, "user456-bet123");
 
         verify(jackpotService).processContribution("bet123", "user456", "jackpot-fixed", BigDecimal.valueOf(100));
     }
@@ -120,16 +123,16 @@ class KafkaConsumerTest {
     @Test
     void testConsumeBet_MissingRequiredFields() {
         // Arrange - Create bet with null fields
-        BetRequest invalidBetRequest = new BetRequest(null, "user456", "jackpot-fixed", BigDecimal.valueOf(100));
+        BetRequest invalidBetRequest = new BetRequest(null, "jackpot-fixed", BigDecimal.valueOf(100));
 
         // Simulate service handling of null betId
         IllegalArgumentException exception = new IllegalArgumentException("Bet ID cannot be null");
-        doThrow(exception).when(jackpotService).processContribution(
+        when(jackpotService.processContribution(
             isNull(), eq("user456"), eq("jackpot-fixed"), eq(BigDecimal.valueOf(100))
-        );
+        )).thenThrow(exception);
 
         // Act & Assert - Should handle missing fields gracefully
-        kafkaConsumer.consumeBet(invalidBetRequest);
+        kafkaConsumer.consumeBet(invalidBetRequest, "user456-bet123");
 
         verify(jackpotService).processContribution(null, "user456", "jackpot-fixed", BigDecimal.valueOf(100));
     }
@@ -137,12 +140,24 @@ class KafkaConsumerTest {
     @Test
     void testConsumeBet_ConcurrentProcessing() {
         // Arrange - Test that consumer can handle concurrent messages
-        BetRequest bet1 = new BetRequest("bet1", "user1", "jackpot-fixed", BigDecimal.valueOf(50));
-        BetRequest bet2 = new BetRequest("bet2", "user2", "jackpot-fixed", BigDecimal.valueOf(75));
+        BetRequest bet1 = new BetRequest("bet1", "jackpot-fixed", BigDecimal.valueOf(50));
+        BetRequest bet2 = new BetRequest("bet2", "jackpot-fixed", BigDecimal.valueOf(75));
+
+        Contribution mockContribution1 = new Contribution("bet1", "user1", "jackpot-fixed",
+            BigDecimal.valueOf(50), BigDecimal.valueOf(5), BigDecimal.valueOf(1000));
+        Contribution mockContribution2 = new Contribution("bet2", "user2", "jackpot-fixed",
+            BigDecimal.valueOf(75), BigDecimal.valueOf(7.5), BigDecimal.valueOf(1000));
+
+        when(jackpotService.processContribution(
+            eq("bet1"), eq("user1"), eq("jackpot-fixed"), eq(BigDecimal.valueOf(50))
+        )).thenReturn(mockContribution1);
+        when(jackpotService.processContribution(
+            eq("bet2"), eq("user2"), eq("jackpot-fixed"), eq(BigDecimal.valueOf(75))
+        )).thenReturn(mockContribution2);
 
         // Act
-        kafkaConsumer.consumeBet(bet1);
-        kafkaConsumer.consumeBet(bet2);
+        kafkaConsumer.consumeBet(bet1, "user1-bet1");
+        kafkaConsumer.consumeBet(bet2, "user2-bet2");
 
         // Assert - Both messages should be processed
         verify(jackpotService).processContribution("bet1", "user1", "jackpot-fixed", BigDecimal.valueOf(50));
@@ -153,18 +168,19 @@ class KafkaConsumerTest {
     void testConsumeBet_RecoveryAfterFailure() {
         // Arrange - First call fails, second call succeeds
         RuntimeException firstException = new RuntimeException("Temporary failure");
+        Contribution mockContribution = new Contribution("bet123", "user456", "jackpot-fixed",
+            BigDecimal.valueOf(100), BigDecimal.valueOf(10), BigDecimal.valueOf(1000));
 
-        doThrow(firstException)
-            .doNothing()
-            .when(jackpotService).processContribution(
-                eq("bet123"), eq("user456"), eq("jackpot-fixed"), eq(BigDecimal.valueOf(100))
-            );
+        when(jackpotService.processContribution(
+            eq("bet123"), eq("user456"), eq("jackpot-fixed"), eq(BigDecimal.valueOf(100))
+        )).thenThrow(firstException)
+          .thenReturn(mockContribution);
 
         // Act - First call (should fail but not crash)
-        kafkaConsumer.consumeBet(validBetRequest);
+        kafkaConsumer.consumeBet(validBetRequest, "user456-bet123");
 
         // Act - Second call (should succeed)
-        kafkaConsumer.consumeBet(validBetRequest);
+        kafkaConsumer.consumeBet(validBetRequest, "user456-bet123");
 
         // Assert - Both calls should reach the service
         verify(jackpotService, times(2)).processContribution(

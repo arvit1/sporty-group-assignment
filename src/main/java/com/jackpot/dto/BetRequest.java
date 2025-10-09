@@ -9,9 +9,6 @@ public record BetRequest(
     String betId,
 
     @NotNull
-    String userId,
-
-    @NotNull
     String jackpotId,
 
     @NotNull

@@ -3,12 +3,14 @@ package com.jackpot.controller;
 import com.jackpot.dto.BetRequest;
 import com.jackpot.dto.BetResponse;
 import com.jackpot.kafka.KafkaProducer;
+import com.jackpot.security.CustomUserDetails;
 import com.jackpot.service.JackpotService;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.concurrent.CompletableFuture;
@@ -28,10 +30,26 @@ public class BetController {
     }
 
     @PostMapping
-    public CompletableFuture<ResponseEntity<BetResponse>> publishBet(@Valid @RequestBody BetRequest betRequest) {
+    public CompletableFuture<ResponseEntity<BetResponse>> publishBet(
+            @Valid @RequestBody BetRequest betRequest,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
         logger.info("Received bet request: {}", betRequest);
 
-        return kafkaProducer.sendBet(betRequest)
+        if (userDetails == null) {
+            throw new SecurityException("User not authenticated");
+        }
+
+        String userId = userDetails.getUserId().toString();
+        logger.info("Extracted user ID from authentication: {}", userId);
+
+        // Create a bet request with user ID from authentication
+        BetRequest authenticatedBetRequest = new BetRequest(
+            betRequest.betId(),
+            betRequest.jackpotId(),
+            betRequest.betAmount()
+        );
+
+        return kafkaProducer.sendBet(authenticatedBetRequest, userId)
                 .thenApply(result -> {
                     BetResponse response = new BetResponse(
                             betRequest.betId(),

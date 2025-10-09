@@ -28,35 +28,35 @@ class KafkaProducerTest {
     @Test
     void testSendBet_Success() {
         // Arrange
-        BetRequest betRequest = new BetRequest("bet123", "user456", "jackpot-fixed", BigDecimal.valueOf(100));
+        BetRequest betRequest = new BetRequest("bet123", "jackpot-fixed", BigDecimal.valueOf(100));
         SendResult<String, BetRequest> sendResult = mock(SendResult.class);
         CompletableFuture<SendResult<String, BetRequest>> future = CompletableFuture.completedFuture(sendResult);
 
-        when(kafkaTemplate.send(eq("jackpot-bets"), eq("bet123"), eq(betRequest))).thenReturn(future);
+        when(kafkaTemplate.send(eq("jackpot-bets"), eq("user456-bet123"), eq(betRequest))).thenReturn(future);
 
         // Act
-        CompletableFuture<SendResult<String, BetRequest>> result = kafkaProducer.sendBet(betRequest);
+        CompletableFuture<SendResult<String, BetRequest>> result = kafkaProducer.sendBet(betRequest, "user456");
 
         // Assert
         assertNotNull(result);
-        verify(kafkaTemplate).send("jackpot-bets", "bet123", betRequest);
+        verify(kafkaTemplate).send("jackpot-bets", "user456-bet123", betRequest);
     }
 
     @Test
     void testSendBet_Failure() {
         // Arrange
-        BetRequest betRequest = new BetRequest("bet123", "user456", "jackpot-fixed", BigDecimal.valueOf(100));
+        BetRequest betRequest = new BetRequest("bet123", "jackpot-fixed", BigDecimal.valueOf(100));
         RuntimeException exception = new RuntimeException("Kafka error");
         CompletableFuture<SendResult<String, BetRequest>> future = new CompletableFuture<>();
         future.completeExceptionally(exception);
 
-        when(kafkaTemplate.send(eq("jackpot-bets"), eq("bet123"), eq(betRequest))).thenReturn(future);
+        when(kafkaTemplate.send(eq("jackpot-bets"), eq("user456-bet123"), eq(betRequest))).thenReturn(future);
 
         // Act
-        CompletableFuture<SendResult<String, BetRequest>> result = kafkaProducer.sendBet(betRequest);
+        CompletableFuture<SendResult<String, BetRequest>> result = kafkaProducer.sendBet(betRequest, "user456");
 
         // Assert
         assertNotNull(result);
-        verify(kafkaTemplate).send("jackpot-bets", "bet123", betRequest);
+        verify(kafkaTemplate).send("jackpot-bets", "user456-bet123", betRequest);
     }
 }
