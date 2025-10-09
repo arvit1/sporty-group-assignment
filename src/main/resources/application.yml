@@ -50,18 +50,6 @@ spring:
       schema-locations: classpath:schema.sql
       data-locations: classpath:data.sql
 
-# Application-specific Kafka settings
-kafka:
-  topics:
-    bets: jackpot-bets
-    bets-dlt: jackpot-bets.DLT
-
-  # Connection retry settings
-  connection:
-    max-retries: 5
-    retry-interval-ms: 2000
-    timeout-ms: 30000
-
 server:
   port: 8080
 
