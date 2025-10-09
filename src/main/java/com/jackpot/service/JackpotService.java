@@ -6,8 +6,6 @@ import com.jackpot.model.Reward;
 import com.jackpot.repository.ContributionRepository;
 import com.jackpot.repository.JackpotRepository;
 import com.jackpot.repository.RewardRepository;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,8 +23,8 @@ public class JackpotService {
     private final Random random = new Random();
 
     public JackpotService(JackpotRepository jackpotRepository,
-                         ContributionRepository contributionRepository,
-                         RewardRepository rewardRepository) {
+                          ContributionRepository contributionRepository,
+                          RewardRepository rewardRepository) {
         this.jackpotRepository = jackpotRepository;
         this.contributionRepository = contributionRepository;
         this.rewardRepository = rewardRepository;
@@ -107,10 +105,15 @@ public class JackpotService {
 
     private BigDecimal calculateContributionAmount(Jackpot jackpot, BigDecimal betAmount) {
         switch (jackpot.getContributionType()) {
+
             case FIXED:
+                // Formula:
+                // contribution = max(0.01, betAmount * fixedContributionPercentage / 100)
+
                 if (jackpot.getFixedContributionPercentage() == null) {
                     throw new IllegalStateException("Fixed contribution percentage not configured for jackpot: " + jackpot.getJackpotId());
                 }
+
                 BigDecimal fixedContribution = betAmount.multiply(jackpot.getFixedContributionPercentage())
                         .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
 
@@ -118,6 +121,10 @@ public class JackpotService {
                 return fixedContribution.max(BigDecimal.valueOf(0.01));
 
             case VARIABLE:
+                // Formula:
+                // variablePercentage = clamp(1, 100, base - (decay * pool / 1000))
+                // contribution = max(0.01, betAmount * variablePercentage / 100)
+
                 if (jackpot.getVariableContributionBasePercentage() == null || jackpot.getVariableContributionDecayRate() == null) {
                     throw new IllegalStateException("Variable contribution parameters not configured for jackpot: " + jackpot.getJackpotId());
                 }
@@ -126,12 +133,12 @@ public class JackpotService {
                 BigDecimal decayRate = jackpot.getVariableContributionDecayRate();
                 BigDecimal poolSize = jackpot.getCurrentPoolValue();
 
-                // Calculate variable percentage: base - (decay * pool/1000)
+                // variablePercentage = base - (decay * pool / 1000)
                 BigDecimal variablePercentage = basePercentage.subtract(
                         decayRate.multiply(poolSize.divide(BigDecimal.valueOf(1000), 2, RoundingMode.HALF_UP))
                 );
 
-                // Ensure minimum contribution of 1% and maximum of 100%
+                // Clamp variablePercentage to range [1, 100]
                 variablePercentage = variablePercentage.max(BigDecimal.ONE).min(BigDecimal.valueOf(100));
 
                 BigDecimal variableContribution = betAmount.multiply(variablePercentage)

@@ -14,13 +14,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.ResponseEntity;
 import org.springframework.kafka.support.SendResult;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.math.BigDecimal;
-import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -33,12 +29,11 @@ import static org.mockito.Mockito.*;
  *
  * @test Security and Edge Cases
  * @description Validates security measures and edge case handling in BetController
- * @scenarios
- *   - Authentication bypass attempts
- *   - Authorization boundary violations
- *   - Input validation edge cases
- *   - Rate limiting considerations
- *   - Data integrity protection
+ * @scenarios - Authentication bypass attempts
+ * - Authorization boundary violations
+ * - Input validation edge cases
+ * - Rate limiting considerations
+ * - Data integrity protection
  * @expected Controller should maintain security boundaries and handle edge cases gracefully
  */
 @ExtendWith(MockitoExtension.class)
@@ -53,26 +48,26 @@ class BetControllerSecurityTest {
     @InjectMocks
     private BetController betController;
 
-    private CustomUserDetails regularUser;
-    private CustomUserDetails adminUser;
+    private CustomUserDetails user1;
+    private CustomUserDetails user2;
 
     @BeforeEach
     void setUp() {
         // Setup regular user
-        User regularUserEntity = new User();
-        regularUserEntity.setId(100L);
-        regularUserEntity.setUsername("regularuser");
-        regularUserEntity.setPassword("password");
-        regularUserEntity.setEnabled(true);
-        regularUser = new CustomUserDetails(regularUserEntity);
+        User user1Entity = new User();
+        user1Entity.setId(100L);
+        user1Entity.setUsername("user1");
+        user1Entity.setPassword("password");
+        user1Entity.setEnabled(true);
+        user1 = new CustomUserDetails(user1Entity);
 
         // Setup admin user
-        User adminUserEntity = new User();
-        adminUserEntity.setId(999L);
-        adminUserEntity.setUsername("admin");
-        adminUserEntity.setPassword("adminpass");
-        adminUserEntity.setEnabled(true);
-        adminUser = new CustomUserDetails(adminUserEntity);
+        User user2Entity = new User();
+        user2Entity.setId(999L);
+        user2Entity.setUsername("admin");
+        user2Entity.setPassword("adminpass");
+        user2Entity.setEnabled(true);
+        user2 = new CustomUserDetails(user2Entity);
     }
 
     @Test
@@ -86,7 +81,7 @@ class BetControllerSecurityTest {
         when(kafkaProducer.sendBet(any(BetRequest.class), eq("100"))).thenReturn(future);
 
         // Act
-        CompletableFuture<ResponseEntity<BetResponse>> result = betController.publishBet(betRequest, regularUser);
+        CompletableFuture<ResponseEntity<BetResponse>> result = betController.publishBet(betRequest, user1);
 
         // Assert
         assertNotNull(result);
@@ -140,14 +135,14 @@ class BetControllerSecurityTest {
     void testPublishBet_EdgeCase_ExtremelyLargeBetAmount() {
         // Arrange
         BetRequest betRequest = new BetRequest("large-bet-001", "jackpot-fixed",
-            new BigDecimal("99999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999"));
+                new BigDecimal("99999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999"));
         SendResult<String, BetRequest> sendResult = mock(SendResult.class);
         CompletableFuture<SendResult<String, BetRequest>> future = CompletableFuture.completedFuture(sendResult);
 
         when(kafkaProducer.sendBet(any(BetRequest.class), eq("100"))).thenReturn(future);
 
         // Act
-        CompletableFuture<ResponseEntity<BetResponse>> result = betController.publishBet(betRequest, regularUser);
+        CompletableFuture<ResponseEntity<BetResponse>> result = betController.publishBet(betRequest, user1);
 
         // Assert
         assertNotNull(result);
@@ -168,7 +163,7 @@ class BetControllerSecurityTest {
         when(kafkaProducer.sendBet(any(BetRequest.class), eq("100"))).thenReturn(future);
 
         // Act
-        CompletableFuture<ResponseEntity<BetResponse>> result = betController.publishBet(betRequest, regularUser);
+        CompletableFuture<ResponseEntity<BetResponse>> result = betController.publishBet(betRequest, user1);
 
         // Assert
         assertNotNull(result);
@@ -192,9 +187,9 @@ class BetControllerSecurityTest {
         when(kafkaProducer.sendBet(any(BetRequest.class), eq("100"))).thenReturn(future);
 
         // Act - Execute multiple requests
-        CompletableFuture<ResponseEntity<BetResponse>> result1 = betController.publishBet(betRequest1, regularUser);
-        CompletableFuture<ResponseEntity<BetResponse>> result2 = betController.publishBet(betRequest2, regularUser);
-        CompletableFuture<ResponseEntity<BetResponse>> result3 = betController.publishBet(betRequest3, regularUser);
+        CompletableFuture<ResponseEntity<BetResponse>> result1 = betController.publishBet(betRequest1, user1);
+        CompletableFuture<ResponseEntity<BetResponse>> result2 = betController.publishBet(betRequest2, user1);
+        CompletableFuture<ResponseEntity<BetResponse>> result3 = betController.publishBet(betRequest3, user1);
 
         // Assert
         assertNotNull(result1);
@@ -224,7 +219,7 @@ class BetControllerSecurityTest {
         when(kafkaProducer.sendBet(any(BetRequest.class), eq("100"))).thenReturn(future);
 
         // Act
-        CompletableFuture<ResponseEntity<BetResponse>> result = betController.publishBet(betRequest, regularUser);
+        CompletableFuture<ResponseEntity<BetResponse>> result = betController.publishBet(betRequest, user1);
 
         // Assert
         assertNotNull(result);
@@ -265,7 +260,7 @@ class BetControllerSecurityTest {
 
         // Act & Assert - Should throw SecurityException
         SecurityException exception = assertThrows(SecurityException.class,
-            () -> betController.publishBet(betRequest, null));
+                () -> betController.publishBet(betRequest, null));
 
         assertEquals("User not authenticated", exception.getMessage());
         verify(kafkaProducer, never()).sendBet(any(BetRequest.class), any(String.class));
@@ -283,7 +278,7 @@ class BetControllerSecurityTest {
         when(kafkaProducer.sendBet(any(BetRequest.class), eq("100"))).thenReturn(future);
 
         // Act
-        CompletableFuture<ResponseEntity<BetResponse>> result = betController.publishBet(betRequest, regularUser);
+        CompletableFuture<ResponseEntity<BetResponse>> result = betController.publishBet(betRequest, user1);
 
         // Assert - The result should be a CompletableFuture that hasn't completed
         assertNotNull(result);
@@ -306,10 +301,10 @@ class BetControllerSecurityTest {
         when(kafkaProducer.sendBet(any(BetRequest.class), eq("999"))).thenReturn(future);
 
         // Act - User 1 places bet
-        CompletableFuture<ResponseEntity<BetResponse>> result1 = betController.publishBet(user1Bet, regularUser);
+        CompletableFuture<ResponseEntity<BetResponse>> result1 = betController.publishBet(user1Bet, user1);
 
         // Act - User 2 places bet
-        CompletableFuture<ResponseEntity<BetResponse>> result2 = betController.publishBet(user2Bet, adminUser);
+        CompletableFuture<ResponseEntity<BetResponse>> result2 = betController.publishBet(user2Bet, user2);
 
         // Assert
         assertNotNull(result1);
@@ -341,7 +336,7 @@ class BetControllerSecurityTest {
         // Act - Create many concurrent requests
         for (int i = 0; i < numberOfRequests; i++) {
             betRequests[i] = new BetRequest("mass-bet-" + i, "jackpot-fixed", BigDecimal.valueOf(10 + i));
-            results[i] = betController.publishBet(betRequests[i], regularUser);
+            results[i] = betController.publishBet(betRequests[i], user1);
         }
 
         // Assert - All should complete successfully
