@@ -152,7 +152,7 @@ public class JackpotService {
                 );
 
                 // Clamp variablePercentage to range [1, 100]
-                variablePercentage = variablePercentage.max(BigDecimal.ONE).min(BigDecimal.valueOf(100));
+                variablePercentage = variablePercentage.min(BigDecimal.valueOf(100)).max(BigDecimal.ONE);
 
                 BigDecimal variableContribution = betAmount.multiply(variablePercentage)
                         .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
