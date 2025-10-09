@@ -1,4 +1,0 @@
-com/jackpot/service/JackpotServiceTest.class
-com/jackpot/security/RedisJwtSecretManagerTest.class
-com/jackpot/kafka/KafkaProducerTest.class
-com/jackpot/controller/BetControllerTest.class

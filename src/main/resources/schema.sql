@@ -1,7 +1,6 @@
 -- Create users table for JWT authentication
 CREATE TABLE IF NOT EXISTS users (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    user_id VARCHAR(50) NOT NULL UNIQUE,
     username VARCHAR(50) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
     email VARCHAR(100) NOT NULL UNIQUE,
