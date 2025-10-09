@@ -16,7 +16,7 @@ public class RedisJwtSecretManager {
   private RedisTemplate<String, String> redisTemplate;
   private final String secret;
 
-  public RedisJwtSecretManager(@Value("{jwt.secret}") String secret, RedisTemplate<String, String> redisTemplate) {
+  public RedisJwtSecretManager(@Value("${jwt.secret}") String secret, RedisTemplate<String, String> redisTemplate) {
     this.secret = secret;
     this.redisTemplate = redisTemplate;
   }
