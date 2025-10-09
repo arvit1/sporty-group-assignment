@@ -5,13 +5,13 @@ import jakarta.validation.constraints.Positive;
 import java.math.BigDecimal;
 
 public record BetRequest(
-    @NotNull
-    String betId,
+        @NotNull(message = "Bet ID cannot be null")
+        String betId,
 
-    @NotNull
-    String jackpotId,
+        @NotNull(message = "Jackpot ID cannot be null")
+        String jackpotId,
 
-    @NotNull
-    @Positive
-    BigDecimal betAmount
+        @NotNull(message = "Bet amount cannot be null")
+        @Positive(message = "Bet amount must be positive")
+        BigDecimal betAmount
 ) {}

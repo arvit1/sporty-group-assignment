@@ -4,7 +4,7 @@ import java.math.BigDecimal;
 
 public record RewardResponse(
     String betId,
-    boolean winsJackpot,
+    boolean won,
     BigDecimal rewardAmount,
     String message
 ) {}

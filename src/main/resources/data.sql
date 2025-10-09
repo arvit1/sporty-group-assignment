@@ -14,7 +14,7 @@ INSERT INTO jackpots (
 ) VALUES (
     'jackpot-fixed-fixed', 1000.00, 1000.00,
     'FIXED', 5.00,
-    'FIXED', 10.00
+    'FIXED', 100.00
 );
 
 -- Fixed contribution (3%) and Variable reward chance

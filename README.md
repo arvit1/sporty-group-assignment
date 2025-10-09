@@ -75,7 +75,7 @@ curl -X POST http://localhost:8080/api/bets \
   -H "Authorization: Bearer $JWT_TOKEN" \
   -d '{
     "betId": "bet-123",
-    "userId": "user1",
+    "userId": 1,
     "jackpotId": "jackpot-fixed-fixed",
     "betAmount": 100.50
   }'
@@ -112,7 +112,7 @@ curl -X GET http://localhost:8080/api/jackpots/jackpot-789 \
 
 ```bash
 # Evaluate if a bet wins the jackpot
-curl -X POST "http://localhost:8080/api/jackpots/jackpot-789/evaluate-reward?betId=bet-123&userId=user-456" \
+curl -X POST "http://localhost:8080/api/jackpots/jackpot-789/evaluate-reward?betId=bet-123&userId=456" \
   -H "Authorization: Bearer $JWT_TOKEN"
 ```
 
@@ -162,7 +162,7 @@ curl -X POST http://localhost:8080/api/bets \
   -H "Authorization: Bearer $JWT_TOKEN" \
   -d '{
     "betId": "bet-001",
-    "userId": "user-001",
+    "userId": 1,
     "jackpotId": "jackpot-001",
     "betAmount": 50.00
   }'
@@ -172,7 +172,7 @@ curl -X GET http://localhost:8080/api/bets/bet-001/contribution \
   -H "Authorization: Bearer $JWT_TOKEN"
 
 # 4. Evaluate reward
-curl -X POST "http://localhost:8080/api/jackpots/jackpot-001/evaluate-reward?betId=bet-001&userId=user-001" \
+curl -X POST "http://localhost:8080/api/jackpots/jackpot-001/evaluate-reward?betId=bet-001&userId=1" \
   -H "Authorization: Bearer $JWT_TOKEN"
 ```
 

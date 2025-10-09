@@ -20,7 +20,7 @@ public class Contribution {
 
     @NotNull
     @Column(name = "user_id", nullable = false)
-    private String userId;
+    private Long userId;
 
     @NotNull
     @Column(name = "jackpot_id", nullable = false)
@@ -51,7 +51,7 @@ public class Contribution {
     // Constructors
     public Contribution() {}
 
-    public Contribution(String betId, String userId, String jackpotId,
+    public Contribution(String betId, Long userId, String jackpotId,
                        BigDecimal stakeAmount, BigDecimal contributionAmount,
                        BigDecimal currentJackpotAmount) {
         this.betId = betId;
@@ -70,8 +70,8 @@ public class Contribution {
     public String getBetId() { return betId; }
     public void setBetId(String betId) { this.betId = betId; }
 
-    public String getUserId() { return userId; }
-    public void setUserId(String userId) { this.userId = userId; }
+    public Long getUserId() { return userId; }
+    public void setUserId(Long userId) { this.userId = userId; }
 
     public String getJackpotId() { return jackpotId; }
     public void setJackpotId(String jackpotId) { this.jackpotId = jackpotId; }

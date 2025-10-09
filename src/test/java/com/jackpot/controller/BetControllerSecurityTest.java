@@ -17,7 +17,6 @@ import org.springframework.kafka.support.SendResult;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.math.BigDecimal;
-import java.util.concurrent.CompletableFuture;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -74,22 +73,16 @@ class BetControllerSecurityTest {
     void testPublishBet_Security_UserCannotImpersonateAnotherUser() {
         // Arrange
         BetRequest betRequest = new BetRequest("security-bet-001", "jackpot-fixed", BigDecimal.valueOf(100));
-        SendResult<String, BetRequest> sendResult = mock(SendResult.class);
-        CompletableFuture<SendResult<String, BetRequest>> future = CompletableFuture.completedFuture(sendResult);
-
-        // User ID "100" should be used, regardless of any attempt to spoof
-        when(kafkaProducer.sendBet(any(BetRequest.class), eq("100"))).thenReturn(future);
 
         // Act
-        CompletableFuture<ResponseEntity<BetResponse>> result = betController.publishBet(betRequest, user1);
+        ResponseEntity<BetResponse> response = betController.publishBet(betRequest, user1);
 
         // Assert
-        assertNotNull(result);
-        ResponseEntity<BetResponse> response = result.join();
+        assertNotNull(response);
         assertEquals(200, response.getStatusCodeValue());
 
-        // Verify that user ID "100" (from authentication) was used
-        verify(kafkaProducer).sendBet(any(BetRequest.class), eq("100"));
+        // Verify that user ID 100L (from authentication) was used
+        verify(kafkaProducer).sendBet(any(BetRequest.class), eq(100L));
     }
 
     @Test
@@ -103,22 +96,17 @@ class BetControllerSecurityTest {
         CustomUserDetails disabledUser = new CustomUserDetails(disabledUserEntity);
 
         BetRequest betRequest = new BetRequest("disabled-bet-001", "jackpot-fixed", BigDecimal.valueOf(50));
-        SendResult<String, BetRequest> sendResult = mock(SendResult.class);
-        CompletableFuture<SendResult<String, BetRequest>> future = CompletableFuture.completedFuture(sendResult);
-
-        when(kafkaProducer.sendBet(any(BetRequest.class), eq("777"))).thenReturn(future);
 
         // Act
-        CompletableFuture<ResponseEntity<BetResponse>> result = betController.publishBet(betRequest, disabledUser);
+        ResponseEntity<BetResponse> response = betController.publishBet(betRequest, disabledUser);
 
         // Assert - Should still work since authentication is handled by Spring Security
         // The controller trusts that if the user is authenticated, they are enabled
-        assertNotNull(result);
-        ResponseEntity<BetResponse> response = result.join();
+        assertNotNull(response);
         assertEquals(200, response.getStatusCodeValue());
 
         // User ID "777" should still be used
-        verify(kafkaProducer).sendBet(any(BetRequest.class), eq("777"));
+        verify(kafkaProducer).sendBet(any(BetRequest.class), eq(777L));
     }
 
     @Test
@@ -136,42 +124,32 @@ class BetControllerSecurityTest {
         // Arrange
         BetRequest betRequest = new BetRequest("large-bet-001", "jackpot-fixed",
                 new BigDecimal("99999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999"));
-        SendResult<String, BetRequest> sendResult = mock(SendResult.class);
-        CompletableFuture<SendResult<String, BetRequest>> future = CompletableFuture.completedFuture(sendResult);
-
-        when(kafkaProducer.sendBet(any(BetRequest.class), eq("100"))).thenReturn(future);
 
         // Act
-        CompletableFuture<ResponseEntity<BetResponse>> result = betController.publishBet(betRequest, user1);
+        ResponseEntity<BetResponse> response = betController.publishBet(betRequest, user1);
 
         // Assert
-        assertNotNull(result);
-        ResponseEntity<BetResponse> response = result.join();
+        assertNotNull(response);
         assertEquals(200, response.getStatusCodeValue());
 
         // Verify the bet was processed despite the large amount
-        verify(kafkaProducer).sendBet(any(BetRequest.class), eq("100"));
+        verify(kafkaProducer).sendBet(any(BetRequest.class), eq(100L));
     }
 
     @Test
     void testPublishBet_EdgeCase_SpecialCharactersInBetId() {
         // Arrange
         BetRequest betRequest = new BetRequest("bet-!@#$%^&*()_+-={}[]|:;'<>,.?/~`", "jackpot-fixed", BigDecimal.valueOf(100));
-        SendResult<String, BetRequest> sendResult = mock(SendResult.class);
-        CompletableFuture<SendResult<String, BetRequest>> future = CompletableFuture.completedFuture(sendResult);
-
-        when(kafkaProducer.sendBet(any(BetRequest.class), eq("100"))).thenReturn(future);
 
         // Act
-        CompletableFuture<ResponseEntity<BetResponse>> result = betController.publishBet(betRequest, user1);
+        ResponseEntity<BetResponse> response = betController.publishBet(betRequest, user1);
 
         // Assert
-        assertNotNull(result);
-        ResponseEntity<BetResponse> response = result.join();
+        assertNotNull(response);
         assertEquals(200, response.getStatusCodeValue());
 
         // Verify the bet was processed with special characters
-        verify(kafkaProducer).sendBet(any(BetRequest.class), eq("100"));
+        verify(kafkaProducer).sendBet(any(BetRequest.class), eq(100L));
     }
 
     @Test
@@ -181,53 +159,38 @@ class BetControllerSecurityTest {
         BetRequest betRequest2 = new BetRequest("concurrent-2", "jackpot-fixed", BigDecimal.valueOf(200));
         BetRequest betRequest3 = new BetRequest("concurrent-3", "jackpot-fixed", BigDecimal.valueOf(300));
 
-        SendResult<String, BetRequest> sendResult = mock(SendResult.class);
-        CompletableFuture<SendResult<String, BetRequest>> future = CompletableFuture.completedFuture(sendResult);
-
-        when(kafkaProducer.sendBet(any(BetRequest.class), eq("100"))).thenReturn(future);
-
         // Act - Execute multiple requests
-        CompletableFuture<ResponseEntity<BetResponse>> result1 = betController.publishBet(betRequest1, user1);
-        CompletableFuture<ResponseEntity<BetResponse>> result2 = betController.publishBet(betRequest2, user1);
-        CompletableFuture<ResponseEntity<BetResponse>> result3 = betController.publishBet(betRequest3, user1);
+        ResponseEntity<BetResponse> response1 = betController.publishBet(betRequest1, user1);
+        ResponseEntity<BetResponse> response2 = betController.publishBet(betRequest2, user1);
+        ResponseEntity<BetResponse> response3 = betController.publishBet(betRequest3, user1);
 
         // Assert
-        assertNotNull(result1);
-        assertNotNull(result2);
-        assertNotNull(result3);
-
-        ResponseEntity<BetResponse> response1 = result1.join();
-        ResponseEntity<BetResponse> response2 = result2.join();
-        ResponseEntity<BetResponse> response3 = result3.join();
+        assertNotNull(response1);
+        assertNotNull(response2);
+        assertNotNull(response3);
 
         assertEquals(200, response1.getStatusCodeValue());
         assertEquals(200, response2.getStatusCodeValue());
         assertEquals(200, response3.getStatusCodeValue());
 
         // Verify all three calls used the same user ID
-        verify(kafkaProducer, times(3)).sendBet(any(BetRequest.class), eq("100"));
+        verify(kafkaProducer, times(3)).sendBet(any(BetRequest.class), eq(100L));
     }
 
     @Test
     void testPublishBet_Security_KafkaKeyFormatProtection() {
         // Arrange
         BetRequest betRequest = new BetRequest("security-key-001", "jackpot-fixed", BigDecimal.valueOf(100));
-        SendResult<String, BetRequest> sendResult = mock(SendResult.class);
-        CompletableFuture<SendResult<String, BetRequest>> future = CompletableFuture.completedFuture(sendResult);
-
-        // The Kafka key should be "100-security-key-001"
-        when(kafkaProducer.sendBet(any(BetRequest.class), eq("100"))).thenReturn(future);
 
         // Act
-        CompletableFuture<ResponseEntity<BetResponse>> result = betController.publishBet(betRequest, user1);
+        ResponseEntity<BetResponse> response = betController.publishBet(betRequest, user1);
 
         // Assert
-        assertNotNull(result);
-        ResponseEntity<BetResponse> response = result.join();
+        assertNotNull(response);
         assertEquals(200, response.getStatusCodeValue());
 
         // Verify the correct user ID was passed to KafkaProducer
-        verify(kafkaProducer).sendBet(any(BetRequest.class), eq("100"));
+        verify(kafkaProducer).sendBet(any(BetRequest.class), eq(100L));
     }
 
     @Test
@@ -263,29 +226,23 @@ class BetControllerSecurityTest {
                 () -> betController.publishBet(betRequest, null));
 
         assertEquals("User not authenticated", exception.getMessage());
-        verify(kafkaProducer, never()).sendBet(any(BetRequest.class), any(String.class));
+        verify(kafkaProducer, never()).sendBet(any(BetRequest.class), any(Long.class));
     }
 
     @Test
     void testPublishBet_EdgeCase_KafkaTimeout() {
         // Arrange
         BetRequest betRequest = new BetRequest("timeout-bet-001", "jackpot-fixed", BigDecimal.valueOf(100));
-
-        // Simulate Kafka timeout (very slow response)
-        CompletableFuture<SendResult<String, BetRequest>> future = new CompletableFuture<>();
-        // Don't complete the future to simulate timeout
-
-        when(kafkaProducer.sendBet(any(BetRequest.class), eq("100"))).thenReturn(future);
+        RuntimeException exception = new RuntimeException("Kafka timeout");
+        doThrow(exception).when(kafkaProducer).sendBet(any(BetRequest.class), eq(100L));
 
         // Act
-        CompletableFuture<ResponseEntity<BetResponse>> result = betController.publishBet(betRequest, user1);
+        ResponseEntity<BetResponse> response = betController.publishBet(betRequest, user1);
 
-        // Assert - The result should be a CompletableFuture that hasn't completed
-        assertNotNull(result);
-        assertFalse(result.isDone());
-
-        // The test doesn't wait for completion, so we can't verify the final state
-        // In a real scenario, there would be a timeout configuration
+        // Assert
+        assertNotNull(response);
+        assertEquals(500, response.getStatusCodeValue());
+        assertTrue(response.getBody().message().contains("Failed to publish bet to Kafka"));
     }
 
     @Test
@@ -294,31 +251,22 @@ class BetControllerSecurityTest {
         BetRequest user1Bet = new BetRequest("user1-bet", "jackpot-fixed", BigDecimal.valueOf(100));
         BetRequest user2Bet = new BetRequest("user2-bet", "jackpot-fixed", BigDecimal.valueOf(200));
 
-        SendResult<String, BetRequest> sendResult = mock(SendResult.class);
-        CompletableFuture<SendResult<String, BetRequest>> future = CompletableFuture.completedFuture(sendResult);
-
-        when(kafkaProducer.sendBet(any(BetRequest.class), eq("100"))).thenReturn(future);
-        when(kafkaProducer.sendBet(any(BetRequest.class), eq("999"))).thenReturn(future);
-
         // Act - User 1 places bet
-        CompletableFuture<ResponseEntity<BetResponse>> result1 = betController.publishBet(user1Bet, user1);
+        ResponseEntity<BetResponse> response1 = betController.publishBet(user1Bet, user1);
 
         // Act - User 2 places bet
-        CompletableFuture<ResponseEntity<BetResponse>> result2 = betController.publishBet(user2Bet, user2);
+        ResponseEntity<BetResponse> response2 = betController.publishBet(user2Bet, user2);
 
         // Assert
-        assertNotNull(result1);
-        assertNotNull(result2);
-
-        ResponseEntity<BetResponse> response1 = result1.join();
-        ResponseEntity<BetResponse> response2 = result2.join();
+        assertNotNull(response1);
+        assertNotNull(response2);
 
         assertEquals(200, response1.getStatusCodeValue());
         assertEquals(200, response2.getStatusCodeValue());
 
         // Verify that each user's bet used their own user ID
-        verify(kafkaProducer).sendBet(any(BetRequest.class), eq("100"));
-        verify(kafkaProducer).sendBet(any(BetRequest.class), eq("999"));
+        verify(kafkaProducer).sendBet(any(BetRequest.class), eq(100L));
+        verify(kafkaProducer).sendBet(any(BetRequest.class), eq(999L));
     }
 
     @Test
@@ -326,27 +274,21 @@ class BetControllerSecurityTest {
         // Arrange - Many concurrent requests to test memory handling
         int numberOfRequests = 100;
         BetRequest[] betRequests = new BetRequest[numberOfRequests];
-        CompletableFuture<ResponseEntity<BetResponse>>[] results = new CompletableFuture[numberOfRequests];
-
-        SendResult<String, BetRequest> sendResult = mock(SendResult.class);
-        CompletableFuture<SendResult<String, BetRequest>> future = CompletableFuture.completedFuture(sendResult);
-
-        when(kafkaProducer.sendBet(any(BetRequest.class), eq("100"))).thenReturn(future);
+        ResponseEntity<BetResponse>[] responses = new ResponseEntity[numberOfRequests];
 
         // Act - Create many concurrent requests
         for (int i = 0; i < numberOfRequests; i++) {
             betRequests[i] = new BetRequest("mass-bet-" + i, "jackpot-fixed", BigDecimal.valueOf(10 + i));
-            results[i] = betController.publishBet(betRequests[i], user1);
+            responses[i] = betController.publishBet(betRequests[i], user1);
         }
 
         // Assert - All should complete successfully
         for (int i = 0; i < numberOfRequests; i++) {
-            assertNotNull(results[i]);
-            ResponseEntity<BetResponse> response = results[i].join();
-            assertEquals(200, response.getStatusCodeValue());
+            assertNotNull(responses[i]);
+            assertEquals(200, responses[i].getStatusCodeValue());
         }
 
         // Verify all calls used the same user ID
-        verify(kafkaProducer, times(numberOfRequests)).sendBet(any(BetRequest.class), eq("100"));
+        verify(kafkaProducer, times(numberOfRequests)).sendBet(any(BetRequest.class), eq(100L));
     }
 }

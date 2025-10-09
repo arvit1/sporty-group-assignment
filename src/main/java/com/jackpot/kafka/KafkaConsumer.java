@@ -33,7 +33,7 @@ public class KafkaConsumer {
       logger.info("Received bet from Kafka with key '{}': {}", key, betRequest);
 
       // Extract userId from the composite key (format: userId-betId)
-      String userId = extractUserIdFromKey(key, betRequest.betId());
+      Long userId = extractUserIdFromKey(key, betRequest.betId());
 
       // Process the bet contribution
       jackpotService.processContribution(
@@ -50,18 +50,18 @@ public class KafkaConsumer {
     }
   }
 
-  private String extractUserIdFromKey(String key, String betId) {
+  private Long extractUserIdFromKey(String key, String betId) {
     if (key == null || !key.contains("-")) {
       throw new IllegalArgumentException("Invalid Kafka message key format. Expected format: userId-betId");
     }
 
     // Extract userId from composite key (format: userId-betId)
-    String userId = key.substring(0, key.lastIndexOf("-"));
+    String userId = key.substring(0, key.indexOf("-" + betId));
 
     if (userId.isEmpty()) {
       throw new IllegalArgumentException("User ID cannot be empty in Kafka message key");
     }
 
-    return userId;
+    return Long.valueOf(userId);
   }
 }

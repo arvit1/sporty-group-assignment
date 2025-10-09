@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS jackpots (
 CREATE TABLE IF NOT EXISTS contributions (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     bet_id VARCHAR(50) NOT NULL,
-    user_id VARCHAR(50) NOT NULL,
+    user_id BIGINT NOT NULL,
     jackpot_id VARCHAR(50) NOT NULL,
     stake_amount DECIMAL(19,2) NOT NULL,
     contribution_amount DECIMAL(19,2) NOT NULL,
@@ -43,8 +43,8 @@ CREATE TABLE IF NOT EXISTS contributions (
 CREATE TABLE IF NOT EXISTS rewards (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     bet_id VARCHAR(50) NOT NULL,
-    user_id VARCHAR(50) NOT NULL,
-    jackpot_id VARCHAR(50) NOT NULL,
+    user_id BIGINT NOT NULL,
+    jackpot_id VARCHAR(50) NOT NULL UNIQUE,
     jackpot_reward_amount DECIMAL(19,2) NOT NULL,
     created_at TIMESTAMP NOT NULL,
     version BIGINT DEFAULT 0

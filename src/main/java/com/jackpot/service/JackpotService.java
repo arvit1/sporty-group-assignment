@@ -31,7 +31,7 @@ public class JackpotService {
     }
 
     @Transactional
-    public Contribution processContribution(String betId, String userId, String jackpotId, BigDecimal betAmount) {
+    public Contribution processContribution(String betId, Long userId, String jackpotId, BigDecimal betAmount) {
         // Validate input parameters
         validateBetParameters(betId, userId, jackpotId, betAmount);
 
@@ -54,12 +54,12 @@ public class JackpotService {
         return contributionRepository.save(contribution);
     }
 
-    private void validateBetParameters(String betId, String userId, String jackpotId, BigDecimal betAmount) {
+    private void validateBetParameters(String betId, Long userId, String jackpotId, BigDecimal betAmount) {
         if (betId == null || betId.trim().isEmpty()) {
             throw new IllegalArgumentException("Bet ID cannot be null or empty");
         }
-        if (userId == null || userId.trim().isEmpty()) {
-            throw new IllegalArgumentException("User ID cannot be null or empty");
+        if (userId == null) {
+            throw new IllegalArgumentException("User ID cannot be null");
         }
         if (jackpotId == null || jackpotId.trim().isEmpty()) {
             throw new IllegalArgumentException("Jackpot ID cannot be null or empty");
@@ -73,7 +73,7 @@ public class JackpotService {
     }
 
     @Transactional
-    public Optional<Reward> evaluateReward(String betId, String userId, String jackpotId) {
+    public Optional<Reward> evaluateReward(String betId, Long userId, String jackpotId) {
         // Check if bet already has a reward
         if (rewardRepository.existsByBetId(betId)) {
             return rewardRepository.findByBetId(betId);
@@ -83,13 +83,28 @@ public class JackpotService {
         Jackpot jackpot = jackpotRepository.findByJackpotIdWithLock(jackpotId)
                 .orElseThrow(() -> new RuntimeException("Jackpot not found: " + jackpotId));
 
+        // Check if jackpot already has a winner (enforces single winner per jackpot)
+        if (rewardRepository.existsByJackpotId(jackpotId)) {
+            return Optional.empty();
+        }
+
         // Calculate reward chance based on jackpot configuration
         double rewardChance = calculateRewardChance(jackpot);
+
+        // for testing fast win
+//        if (jackpotId.equals("jackpot-fixed-fixed")) {
+//            rewardChance *= 2; // Triple the chance for demo
+//        }
 
         // Determine if bet wins
         boolean winsJackpot = random.nextDouble() * 100 < rewardChance;
 
         if (winsJackpot) {
+            // Double-check no winner was created during race condition
+            if (rewardRepository.existsByJackpotId(jackpotId)) {
+                return Optional.empty();
+            }
+
             // Create reward
             Reward reward = new Reward(betId, userId, jackpotId, jackpot.getCurrentPoolValue());
 

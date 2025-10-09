@@ -27,7 +27,7 @@ public class JackpotController {
     public ResponseEntity<RewardResponse> evaluateReward(
             @PathVariable String jackpotId,
             @RequestParam String betId,
-            @RequestParam String userId) {
+            @RequestParam Long userId) {
 
         logger.info("Evaluating reward for bet: {}, user: {}, jackpot: {}", betId, userId, jackpotId);
 

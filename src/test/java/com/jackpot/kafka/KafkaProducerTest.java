@@ -12,8 +12,6 @@ import org.springframework.kafka.support.SendResult;
 import java.math.BigDecimal;
 import java.util.concurrent.CompletableFuture;
 
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -32,14 +30,13 @@ class KafkaProducerTest {
         SendResult<String, BetRequest> sendResult = mock(SendResult.class);
         CompletableFuture<SendResult<String, BetRequest>> future = CompletableFuture.completedFuture(sendResult);
 
-        when(kafkaTemplate.send(eq("jackpot-bets"), eq("user456-bet123"), eq(betRequest))).thenReturn(future);
+        when(kafkaTemplate.send(eq("jackpot-bets"), eq("456-bet123"), eq(betRequest))).thenReturn(future);
 
         // Act
-        CompletableFuture<SendResult<String, BetRequest>> result = kafkaProducer.sendBet(betRequest, "user456");
+        kafkaProducer.sendBet(betRequest, 456L);
 
         // Assert
-        assertNotNull(result);
-        verify(kafkaTemplate).send("jackpot-bets", "user456-bet123", betRequest);
+        verify(kafkaTemplate).send("jackpot-bets", "456-bet123", betRequest);
     }
 
     @Test
@@ -50,13 +47,12 @@ class KafkaProducerTest {
         CompletableFuture<SendResult<String, BetRequest>> future = new CompletableFuture<>();
         future.completeExceptionally(exception);
 
-        when(kafkaTemplate.send(eq("jackpot-bets"), eq("user456-bet123"), eq(betRequest))).thenReturn(future);
+        when(kafkaTemplate.send(eq("jackpot-bets"), eq("456-bet123"), eq(betRequest))).thenReturn(future);
 
         // Act
-        CompletableFuture<SendResult<String, BetRequest>> result = kafkaProducer.sendBet(betRequest, "user456");
+        kafkaProducer.sendBet(betRequest, 456L);
 
         // Assert
-        assertNotNull(result);
-        verify(kafkaTemplate).send("jackpot-bets", "user456-bet123", betRequest);
+        verify(kafkaTemplate).send("jackpot-bets", "456-bet123", betRequest);
     }
 }

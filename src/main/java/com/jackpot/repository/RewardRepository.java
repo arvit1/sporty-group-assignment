@@ -10,7 +10,8 @@ import java.util.Optional;
 @Repository
 public interface RewardRepository extends JpaRepository<Reward, Long> {
     Optional<Reward> findByBetId(String betId);
-    List<Reward> findByUserId(String userId);
+    List<Reward> findByUserId(Long userId);
     List<Reward> findByJackpotId(String jackpotId);
     boolean existsByBetId(String betId);
+    boolean existsByJackpotId(String jackpotId);
 }

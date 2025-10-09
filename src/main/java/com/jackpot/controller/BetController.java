@@ -13,7 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.concurrent.CompletableFuture;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/bets")
@@ -30,7 +30,7 @@ public class BetController {
     }
 
     @PostMapping
-    public CompletableFuture<ResponseEntity<BetResponse>> publishBet(
+    public ResponseEntity<BetResponse> publishBet(
             @Valid @RequestBody BetRequest betRequest,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         logger.info("Received bet request: {}", betRequest);
@@ -39,34 +39,26 @@ public class BetController {
             throw new SecurityException("User not authenticated");
         }
 
-        String userId = userDetails.getUserId().toString();
+        Long userId = userDetails.getUserId();
         logger.info("Extracted user ID from authentication: {}", userId);
 
-        // Create a bet request with user ID from authentication
-        BetRequest authenticatedBetRequest = new BetRequest(
-            betRequest.betId(),
-            betRequest.jackpotId(),
-            betRequest.betAmount()
-        );
-
-        return kafkaProducer.sendBet(authenticatedBetRequest, userId)
-                .thenApply(result -> {
-                    BetResponse response = new BetResponse(
-                            betRequest.betId(),
-                            "PROCESSED",
-                            "Bet successfully published to Kafka for processing"
-                    );
-                    return ResponseEntity.ok(response);
-                })
-                .exceptionally(ex -> {
-                    logger.error("Failed to publish bet to Kafka: {}", betRequest.betId(), ex);
-                    BetResponse response = new BetResponse(
-                            betRequest.betId(),
-                            "ERROR",
-                            "Failed to publish bet to Kafka: " + ex.getMessage()
-                    );
-                    return ResponseEntity.internalServerError().body(response);
-                });
+        try {
+            kafkaProducer.sendBet(betRequest, userId);
+            BetResponse response = new BetResponse(
+                    betRequest.betId(),
+                    "PROCESSED",
+                    "Bet successfully published to Kafka for processing"
+            );
+            return ResponseEntity.ok(response);
+        } catch (Exception ex) {
+            logger.error("Failed to publish bet to Kafka: {}", betRequest.betId(), ex);
+            BetResponse response = new BetResponse(
+                    betRequest.betId(),
+                    "ERROR",
+                    "Failed to publish bet to Kafka: " + ex.getMessage()
+            );
+            return ResponseEntity.internalServerError().body(response);
+        }
     }
 
     @GetMapping("/{betId}/contribution")

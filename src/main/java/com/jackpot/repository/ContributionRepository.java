@@ -10,7 +10,7 @@ import java.util.Optional;
 @Repository
 public interface ContributionRepository extends JpaRepository<Contribution, Long> {
     Optional<Contribution> findByBetId(String betId);
-    List<Contribution> findByUserId(String userId);
+    List<Contribution> findByUserId(Long userId);
     List<Contribution> findByJackpotId(String jackpotId);
     boolean existsByBetId(String betId);
 }

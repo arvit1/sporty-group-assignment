@@ -66,13 +66,13 @@ class JackpotServiceTest {
 
         // Act
         Contribution result = jackpotService.processContribution(
-                "bet123", "user456", "jackpot-fixed", BigDecimal.valueOf(100)
+                "bet123", 456L, "jackpot-fixed", BigDecimal.valueOf(100)
         );
 
         // Assert
         assertNotNull(result);
         assertEquals("bet123", result.getBetId());
-        assertEquals("user456", result.getUserId());
+        assertEquals(456L, result.getUserId());
         assertEquals("jackpot-fixed", result.getJackpotId());
         assertEquals(BigDecimal.valueOf(100), result.getStakeAmount());
         assertEquals(BigDecimal.valueOf(5).compareTo(result.getContributionAmount()), 0); // 5% of 100
@@ -91,13 +91,13 @@ class JackpotServiceTest {
 
         // Act
         Contribution result = jackpotService.processContribution(
-                "bet123", "user456", "jackpot-variable", BigDecimal.valueOf(100)
+                "bet123", 456L, "jackpot-variable", BigDecimal.valueOf(100)
         );
 
         // Assert
         assertNotNull(result);
         assertEquals("bet123", result.getBetId());
-        assertEquals("user456", result.getUserId());
+        assertEquals(456L, result.getUserId());
         assertEquals("jackpot-variable", result.getJackpotId());
 
         // Variable contribution calculation: 10% - (0.1 * 2000/1000) = 10% - 0.2% = 9.8%
@@ -116,7 +116,7 @@ class JackpotServiceTest {
 
         // Act & Assert
         RuntimeException exception = assertThrows(RuntimeException.class, () -> {
-            jackpotService.processContribution("bet123", "user456", "non-existent", BigDecimal.valueOf(100));
+            jackpotService.processContribution("bet123", 456L, "non-existent", BigDecimal.valueOf(100));
         });
 
         assertEquals("Jackpot not found: non-existent", exception.getMessage());
@@ -127,12 +127,12 @@ class JackpotServiceTest {
     @Test
     void testEvaluateReward_AlreadyHasReward() {
         // Arrange
-        Reward existingReward = new Reward("bet123", "user456", "jackpot-fixed", BigDecimal.valueOf(1000));
+        Reward existingReward = new Reward("bet123", 456L, "jackpot-fixed", BigDecimal.valueOf(1000));
         when(rewardRepository.existsByBetId("bet123")).thenReturn(true);
         when(rewardRepository.findByBetId("bet123")).thenReturn(Optional.of(existingReward));
 
         // Act
-        Optional<Reward> result = jackpotService.evaluateReward("bet123", "user456", "jackpot-fixed");
+        Optional<Reward> result = jackpotService.evaluateReward("bet123", 456L, "jackpot-fixed");
 
         // Assert
         assertTrue(result.isPresent());
@@ -150,7 +150,7 @@ class JackpotServiceTest {
 
         // Act & Assert
         RuntimeException exception = assertThrows(RuntimeException.class, () -> {
-            jackpotService.evaluateReward("bet123", "user456", "non-existent");
+            jackpotService.evaluateReward("bet123", 456L, "non-existent");
         });
 
         assertEquals("Jackpot not found: non-existent", exception.getMessage());
@@ -176,7 +176,7 @@ class JackpotServiceTest {
     @Test
     void testGetContribution() {
         // Arrange
-        Contribution contribution = new Contribution("bet123", "user456", "jackpot-fixed",
+        Contribution contribution = new Contribution("bet123", 456L, "jackpot-fixed",
                 BigDecimal.valueOf(100), BigDecimal.valueOf(5), BigDecimal.valueOf(1005));
         when(contributionRepository.findByBetId("bet123")).thenReturn(Optional.of(contribution));
 
@@ -192,7 +192,7 @@ class JackpotServiceTest {
     @Test
     void testGetReward() {
         // Arrange
-        Reward reward = new Reward("bet123", "user456", "jackpot-fixed", BigDecimal.valueOf(1000));
+        Reward reward = new Reward("bet123", 456L, "jackpot-fixed", BigDecimal.valueOf(1000));
         when(rewardRepository.findByBetId("bet123")).thenReturn(Optional.of(reward));
 
         // Act

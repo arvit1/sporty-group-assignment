@@ -8,7 +8,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.stereotype.Component;
 
-import java.util.concurrent.CompletableFuture;
+import org.springframework.stereotype.Component;
 
 @Component
 public class KafkaProducer {
@@ -22,13 +22,13 @@ public class KafkaProducer {
         this.kafkaTemplate = kafkaTemplate;
     }
 
-    public CompletableFuture<SendResult<String, BetRequest>> sendBet(BetRequest betRequest, String userId) {
+    public void sendBet(BetRequest betRequest, Long userId) {
         logger.info("Sending bet to Kafka topic '{}' for user '{}': {}", TOPIC, userId, betRequest);
 
         // Use composite key: userId-betId to ensure user-specific partitioning
         String key = userId + "-" + betRequest.betId();
 
-        return kafkaTemplate.send(TOPIC, key, betRequest)
+        kafkaTemplate.send(TOPIC, key, betRequest)
                 .whenComplete((result, ex) -> {
                     if (ex == null) {
                         logger.info("Successfully sent bet to Kafka: {} for user {}", betRequest.betId(), userId);
