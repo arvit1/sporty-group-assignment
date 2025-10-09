@@ -92,9 +92,7 @@ public class JackpotService {
         double rewardChance = calculateRewardChance(jackpot);
 
         // for testing fast win
-//        if (jackpotId.equals("jackpot-fixed-fixed")) {
-//            rewardChance *= 2; // Triple the chance for demo
-//        }
+        //  rewardChance *= 2; // Double the chance for demo
 
         // Determine if bet wins
         boolean winsJackpot = random.nextDouble() * 100 < rewardChance;

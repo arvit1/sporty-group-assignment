@@ -2,11 +2,40 @@
 
 # This script places bets in parallel until a user wins the jackpot.
 
+# Display menu for jackpot selection
+echo "Select jackpot type:"
+echo "1) jackpot-fixed-fixed"
+echo "2) jackpot-fixed-variable"
+echo "3) jackpot-variable-fixed"
+echo "4) jackpot-variable-variable"
+read -p "Enter selection (1-4): " JACKPOT_SELECTION
+
+case $JACKPOT_SELECTION in
+  1)
+    JACKPOT_ID="jackpot-fixed-fixed"
+    ;;
+  2)
+    JACKPOT_ID="jackpot-fixed-variable"
+    ;;
+  3)
+    JACKPOT_ID="jackpot-variable-fixed"
+    ;;
+  4)
+    JACKPOT_ID="jackpot-variable-variable"
+    ;;
+  *)
+    echo "Invalid selection. Exiting."
+    exit 1
+    ;;
+esac
+
+echo "Selected jackpot: $JACKPOT_ID"
+
 # 1. Authenticate and get JWT token
 echo "Authenticating and getting JWT token..."
 JWT_TOKEN=$(curl -s -X POST http://localhost:8080/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{ 
+  -d '{
     "username": "user1",
     "password": "password123"
   }' | jq -r '.token')
@@ -44,7 +73,7 @@ place_bets_worker() {
       -H "Authorization: Bearer $JWT_TOKEN" \
       -d "{
         \"betId\": \"$bet_id\",
-        \"jackpotId\": \"jackpot-fixed-fixed\",
+        \"jackpotId\": \"$JACKPOT_ID\",
         \"betAmount\": 60000.50
       }" > /dev/null # Hide curl output for cleaner logs
 
@@ -54,7 +83,7 @@ place_bets_worker() {
     fi
 
     # Evaluate the reward
-    response=$(curl -s -X POST "http://localhost:8080/api/jackpots/jackpot-fixed-fixed/evaluate-reward?betId=$bet_id&userId=1" \
+    response=$(curl -s -X POST "http://localhost:8080/api/jackpots/$JACKPOT_ID/evaluate-reward?betId=$bet_id&userId=1" \
       -H "Authorization: Bearer $JWT_TOKEN")
 
     # Check if the bet won
