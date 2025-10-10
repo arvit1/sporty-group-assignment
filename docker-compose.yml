@@ -1,25 +1,29 @@
 version: '3.8'
 
 services:
-#  jackpot-service:
-#    build: .
-#    ports:
-#      - "8080:8080"
-#    environment:
-#      # Redis configuration
-#      - REDIS_HOST=redis
-#      - REDIS_PORT=6379
-#    depends_on:
-#      redis:
-#        condition: service_healthy
-#    healthcheck:
-#      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
-#      interval: 30s
-#      timeout: 10s
-#      retries: 3
-#      start_period: 40s
-#    networks:
-#      - jackpot-network
+  jackpot-service:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      # Redis configuration
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      # Kafka configuration
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+    depends_on:
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/h2-console" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - jackpot-network
 
   kafka:
     image: confluentinc/cp-kafka:latest
@@ -40,6 +44,12 @@ services:
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
       KAFKA_CONTROLLER_LISTENER_NAMES: "BROKER"
+    healthcheck:
+      test: [ "CMD", "bash", "-c", "echo > /dev/tcp/localhost/9092" ]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 40s
     networks:
       - jackpot-network
 
@@ -49,7 +59,7 @@ services:
       - "6379:6379"
     command: redis-server --appendonly yes
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 10s
       timeout: 3s
       retries: 3

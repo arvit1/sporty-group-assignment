@@ -14,6 +14,16 @@ A Spring Boot application for managing jackpot contributions and rewards with Ka
 
 ### Using Docker
 
+```bash
+# Start all services
+docker-compose up --build
+
+# Or start in background
+docker-compose up -d
+```
+
+The project includes a multi-stage Dockerfile that builds the Spring Boot application with Maven and creates an optimized runtime image.
+
 1. **Build the Docker image:**
    ```bash
    docker build -t jackpot-service .
@@ -24,6 +34,14 @@ A Spring Boot application for managing jackpot contributions and rewards with Ka
    docker run -p 8080:8080 jackpot-service
    ```
 
+**Dockerfile Features:**
+
+- Multi-stage build for optimized image size
+- Maven dependency caching for faster rebuilds
+- Based on Eclipse Temurin JDK 21
+- Includes curl for healthchecks
+- Alpine-based runtime image for minimal footprint
+
 ### Using Maven
 
 1. **Build the application:**
@@ -33,7 +51,12 @@ A Spring Boot application for managing jackpot contributions and rewards with Ka
 
 2. **Run the application:**
    ```bash
-   java -jar target/jackpot-service-1.0.0.jar
+   java -jar jackpot-service-impl/target/jackpot-service-impl-1.0.0-exec.jar
+   ```
+   
+3. **Run the application force to win:**
+   ```bash
+   mvn spring-boot:run -pl jackpot-service-impl -Dspring-boot.run.jvmArguments="-Djackpot.force-win=true"
    ```
 
 ## API Usage with curl
@@ -53,6 +76,7 @@ curl -X POST http://localhost:8080/api/auth/login \
 ```
 
 **Response:**
+
 ```json
 {
   "token": "eyJhbGciOiJIUzI1NiJ9..."
@@ -60,6 +84,7 @@ curl -X POST http://localhost:8080/api/auth/login \
 ```
 
 Save the token for subsequent requests:
+
 ```bash
 export JWT_TOKEN="your_jwt_token_here"
 ```
@@ -82,6 +107,7 @@ curl -X POST http://localhost:8080/api/bets \
 ```
 
 **Response:**
+
 ```json
 {
   "betId": "bet-123",
@@ -117,6 +143,7 @@ curl -X POST "http://localhost:8080/api/jackpots/jackpot-789/evaluate-reward?bet
 ```
 
 **Response (Win):**
+
 ```json
 {
   "betId": "bet-123",
@@ -127,6 +154,7 @@ curl -X POST "http://localhost:8080/api/jackpots/jackpot-789/evaluate-reward?bet
 ```
 
 **Response (Loss):**
+
 ```json
 {
   "betId": "bet-123",
@@ -178,14 +206,14 @@ curl -X POST "http://localhost:8080/api/jackpots/jackpot-001/evaluate-reward?bet
 
 ## API Endpoints Summary
 
-| Method | Endpoint | Description | Authentication Required |
-|--------|----------|-------------|------------------------|
-| POST | `/api/auth/login` | Authenticate user | No |
-| POST | `/api/bets` | Submit a new bet | Yes |
-| GET | `/api/bets/{betId}/contribution` | Get bet contribution | Yes |
-| GET | `/api/jackpots/{jackpotId}` | Get jackpot details | Yes |
-| POST | `/api/jackpots/{jackpotId}/evaluate-reward` | Evaluate reward | Yes |
-| GET | `/api/jackpots/{jackpotId}/rewards/{betId}` | Get reward details | Yes |
+| Method | Endpoint                                    | Description          | Authentication Required |
+|--------|---------------------------------------------|----------------------|-------------------------|
+| POST   | `/api/auth/login`                           | Authenticate user    | No                      |
+| POST   | `/api/bets`                                 | Submit a new bet     | Yes                     |
+| GET    | `/api/bets/{betId}/contribution`            | Get bet contribution | Yes                     |
+| GET    | `/api/jackpots/{jackpotId}`                 | Get jackpot details  | Yes                     |
+| POST   | `/api/jackpots/{jackpotId}/evaluate-reward` | Evaluate reward      | Yes                     |
+| GET    | `/api/jackpots/{jackpotId}/rewards/{betId}` | Get reward details   | Yes                     |
 
 ## Configuration
 
@@ -244,22 +272,57 @@ docker-compose up -d
 
 ```yaml
 version: '3.8'
+
 services:
   jackpot-service:
     build: .
     ports:
       - "8080:8080"
     environment:
+      # Redis configuration
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
     depends_on:
       redis:
         condition: service_healthy
       kafka:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/actuator/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - jackpot-network
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    hostname: kafka
+    container_name: kafka
+    ports:
+      - "9092:9092"
+      - "9093:9093"
+    environment:
+      CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
+      KAFKA_KRAFT_MODE: "true"
+      KAFKA_PROCESS_ROLES: controller,broker
+      KAFKA_NODE_ID: 1
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka:9093"
+      KAFKA_LISTENERS: "PLAINTEXT://kafka:29092,BROKER://kafka:9093,EXTERNAL://0.0.0.0:9092"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:29092,BROKER://kafka:9093,EXTERNAL://localhost:9092"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "PLAINTEXT:PLAINTEXT,BROKER:PLAINTEXT,EXTERNAL:PLAINTEXT"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_CONTROLLER_LISTENER_NAMES: "BROKER"
+    healthcheck:
+      test: [ "CMD", "bash", "-c", "echo > /dev/tcp/localhost/9092" ]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 40s
+    networks:
+      - jackpot-network
 
   redis:
     image: redis:7-alpine
@@ -267,29 +330,15 @@ services:
       - "6379:6379"
     command: redis-server --appendonly yes
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
     volumes:
       - redis_data:/data
-
-  kafka:
-    image: confluentinc/cp-kafka:7.4.0
-    environment:
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
-    ports:
-      - "9092:9092"
-    depends_on:
-      zookeeper:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "kafka-topics", "--list", "--bootstrap-server", "localhost:9092"]
-
-  zookeeper:
-    image: confluentinc/cp-zookeeper:7.4.0
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-    healthcheck:
-      test: ["CMD", "echo", "ruok", "|", "nc", "localhost", "2181"]
+    networks:
+      - jackpot-network
 
 networks:
   jackpot-network:
@@ -302,18 +351,21 @@ volumes:
 ## Troubleshooting
 
 ### Application Issues
+
 - **Authentication failed:** Ensure you're using the correct username/password
 - **Connection refused:** Check if the service is running on port 8080
 - **Kafka errors:** Ensure Kafka is running if you're using the bet submission feature
 - **Redis errors:** Ensure Redis is running for JWT secret management
 
 ### Docker-Specific Issues
+
 - **Services not starting:** Check if ports are already in use (`lsof -i :8080`)
 - **Connection timeouts:** Wait for health checks to pass or check service logs
 - **Docker resource issues:** Ensure Docker has sufficient memory and disk space
 - **Network problems:** Verify Docker network configuration
 
 ### Docker Debugging Commands
+
 ```bash
 # Check service status
 docker-compose ps
