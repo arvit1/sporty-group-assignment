@@ -5,6 +5,7 @@ import java.math.RoundingMode;
 import java.util.Optional;
 import java.util.Random;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,6 +21,8 @@ import com.jackpot.repository.UserRepository;
 public class JackpotService {
 
   private final ContributionRepository contributionRepository;
+  @Value("${jackpot.force-win:false}")
+  private boolean forceWin;
   private final JackpotRepository jackpotRepository;
   private final Random random = new Random();
   private final RewardRepository rewardRepository;
@@ -62,11 +65,8 @@ public class JackpotService {
     // Calculate reward chance based on jackpot configuration
     double rewardChance = calculateRewardChance(jackpot);
 
-    // for testing fast win
-    //  rewardChance *= 2; // Double the chance for demo
-
-    // Determine if bet wins
-    boolean winsJackpot = random.nextDouble() * 100 < rewardChance;
+    //  for testing forceWin
+    boolean winsJackpot = forceWin || random.nextDouble() * 100 < rewardChance;
 
     if (winsJackpot) {
       // Double-check no winner was created during race condition

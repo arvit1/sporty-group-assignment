@@ -3,16 +3,11 @@ spring:
     url: jdbc:h2:mem:jackpotdb
     driver-class-name: org.h2.Driver
     username: sa
-    password: password
+    password:
 
   jpa:
     database-platform: org.hibernate.dialect.H2Dialect
-    hibernate:
-      ddl-auto: validate
-    show-sql: true
-    properties:
-      hibernate:
-        format_sql: true
+    hibernate.ddl-auto: validate
 
   h2:
     console:
@@ -52,12 +47,6 @@ spring:
 
 server:
   port: 8080
-
-#logging:
-#  level:
-#    com.jackpot: DEBUG
-#    org.springframework.kafka: INFO
-#    org.hibernate.SQL: DEBUG
 
 jwt:
   secret: jackpot-service-secret-key-2024-jwt-token-secret

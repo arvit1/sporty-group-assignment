@@ -75,7 +75,7 @@ place_bets_worker() {
         \"betId\": \"$bet_id\",
         \"jackpotId\": \"$JACKPOT_ID\",
         \"betAmount\": 60000.50
-      }" > /dev/null # Hide curl output for cleaner logs
+      }"
 
     # If another process has won while we were betting, exit.
     if [ -f "$WIN_FLAG" ]; then
@@ -99,11 +99,13 @@ place_bets_worker() {
   done
 }
 
-# 2. Start 20 workers to place bets in parallel
-echo "Starting 20 parallel workers to place bets... This will run until a jackpot is won."
-for i in $(seq 1 20); do
-  place_bets_worker & 
-done
+## 2. Start 20 workers to place bets in parallel
+#echo "Starting 20 parallel workers to place bets... This will run until a jackpot is won."
+#for i in $(seq 1 20); do
+#  place_bets_worker &
+#done
+
+place_bets_worker &
 
 # Wait for any of the background jobs to finish.
 # Since they only finish on a win, this effectively waits for the first win.
