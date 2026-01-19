@@ -70,7 +70,7 @@ public abstract class BaseIntegrationTest {
     registry.add("jackpot.kafka.topic.rewards", () -> "jackpot-rewards-test");
 
     // Security configuration for testing
-    registry.add("jwt.secret", () -> "test-jwt-secret-key-that-is-long-enough-for-hmac-sha256");
+    registry.add("jwt.secret", () -> "jackpot-service-secret-test-test-test");
     registry.add("jwt.expiration", () -> "3600000"); // 1 hour
   }
 
